@@ -10,7 +10,8 @@ readme = "README.md"
 requires-python = ">=3.13,<4.0"
 dependencies = [
     "matrix-nio (>=0.25.2,<0.26.0)",
-    "python-dotenv (>=1.2.1,<2.0.0)"
+    "python-dotenv (>=1.2.1,<2.0.0)",
+    "injector (>=0.22.0,<0.23.0)",
 ]
 
 

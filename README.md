@@ -1,0 +1,8 @@
+- Connect
+- Listen To SpaceChildEvents
+- On Event
+    - Check if it is a Creation Event
+        - Get List of scanned Spaces from Database
+        - Check if created Room / Space is Child of a scanned Space
+            - Set default Power Level to 100 for the Room / Space
+            - Announce it in the Announcement Channel
