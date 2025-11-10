@@ -15,51 +15,53 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { WidgetApi, MatrixCapabilities } from "matrix-widget-api"
 import { parseFragment, assertParam, handleError } from '@/util.js'
+import { WidgetApi, MatrixCapabilities, WidgetApiToWidgetAction } from "matrix-widget-api"
 
 const isSticky = ref(false)
 const userId = ref('')
 const error = ref(false)
 let widgetApi = null
 
-onMounted(async () => {
-  try {
-    const qs = parseFragment()
-    const widgetId = assertParam(qs, 'widgetId')
-    userId.value = assertParam(qs, 'userId')
+onMounted(async () => {  
+  try {  
+    const qs = parseFragment()  
+    const widgetId = assertParam(qs, 'widgetId')  
+    userId.value = assertParam(qs, 'userId')  
+  
+    const targetOrigin = '*'  
+    widgetApi = new WidgetApi(widgetId, targetOrigin)  
 
-    const targetOrigin = '*'
-    widgetApi = new WidgetApi(widgetId, targetOrigin)
-
-    widgetApi.requestCapability(MatrixCapabilities.AlwaysOnScreen)
-
-    widgetApi.on('ready', () => {
-      sendStickyState()
-    })
-
-    await widgetApi.start()
-  } catch (e) {
-    handleError(e)
-    error.value = true
-  }
+    // Berechtigungen anfragen
+    // messages im Raum
+    widgetApi.requestCapabilityToReceiveEvent("m.room.message")  
+    // Custom event mit state_key ""
+    widgetApi.requestCapabilityToReceiveState("org.herald.tree_structure", "")
+      
+    // Event-Listener registrieren  
+    widgetApi.on(`action:${WidgetApiToWidgetAction.SendEvent}`, (ev) => {  
+      ev.preventDefault()  
+      const roomEvent = ev.detail.data  
+        
+      // Prüfen ob es das gewünschte Event ist  
+      if (roomEvent.type === "org.herald.tree_structure") {  
+        console.log('Herald Tree Update empfangen:', roomEvent)  
+      }  
+      else {
+        console.log('Sonstige Nachricht empfangen:', roomEvent)  
+      }
+        
+      widgetApi.transport.reply(ev.detail, {})  
+    }) 
+  
+    await widgetApi.start()  
+  } catch (e) {  
+    handleError(e)  
+    error.value = true  
+  }  
 })
-
-function toggleSticky() {
-  isSticky.value = !isSticky.value
-  sendStickyState()
-}
-
-function sendStickyState() {
-  if (!widgetApi) return
-  widgetApi
-    .setAlwaysOnScreen(isSticky.value)
-    .then((r) => {
-      console.log('[Widget] Client responded with: ', r)
-    })
-    .catch((e) => handleError(e))
-}
 </script>
+
 
 <style scoped>
 button {
