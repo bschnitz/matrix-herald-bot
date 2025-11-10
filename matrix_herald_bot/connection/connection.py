@@ -1,6 +1,7 @@
 from injector import inject, singleton
 from nio import AsyncClient
 from matrix_herald_bot.config.model import Configuration
+from matrix_herald_bot.model.exceptions import NotConnectedError
 
 @singleton
 class Connection:
@@ -18,6 +19,12 @@ class Connection:
         self.connected = True
 
     def get_client(self) -> AsyncClient | None:
+        return self.client
+
+    def get_client_or_raise(self) -> AsyncClient:
+        if self.client is None:
+            raise NotConnectedError
+
         return self.client
 
     async def close(self):

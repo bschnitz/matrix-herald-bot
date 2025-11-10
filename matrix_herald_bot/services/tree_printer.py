@@ -25,7 +25,8 @@ class MatrixTreePrinter:
             print(f"{prefix}  alias: {alias}")
         if node.error:
             print(f"{prefix}  error: {node.error}")
-        print(f"{prefix}  access: {'True' if node.access else 'False'}")
+        print(f"{prefix}  public: {'True' if node.access else 'False'}")
+        print(f"{prefix}  access: {'True' if node.public else 'False'}")
 
         if node.childs:
             print(f"{prefix}  childs:")

@@ -11,6 +11,7 @@ class MatrixTreeNode:
     childs: list["MatrixTreeNode"] = field(default_factory=list)
     access: bool = True
     error: RoomGetStateError | None = None
+    public: bool = False
 
     def get_childs_sorted_by_type(self) -> list["MatrixTreeNode"]:
         type_order = {
@@ -19,3 +20,15 @@ class MatrixTreeNode:
             MatrixNodeType.UNKNOWN: 2
         }
         return sorted(self.childs, key=lambda child: type_order.get(child.type_, 99))
+
+    def convert_to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "canonical_alias": self.canonical_alias,
+            "type": self.type_.name,
+            "public": self.public,
+            "access": self.access,
+            "error": str(self.error) if self.error else None,
+            "childs": [child.convert_to_dict() for child in self.childs]
+        }

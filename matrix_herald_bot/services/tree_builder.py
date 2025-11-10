@@ -4,9 +4,6 @@ from matrix_herald_bot.connection.connection import Connection
 from matrix_herald_bot.model.tree_node import MatrixTreeNode
 from matrix_herald_bot.model.enums import MatrixNodeType
 
-class NotConnectedError(Exception):
-    pass
-
 @singleton
 class MatrixTreeBuilder:
     @inject
@@ -14,8 +11,7 @@ class MatrixTreeBuilder:
         self.connection = connection
 
     async def fetch_tree(self, room_id: str) -> MatrixTreeNode:
-        if (client := self.connection.get_client()) is None:
-            raise NotConnectedError()
+        client = self.connection.get_client_or_raise()
 
         state_events = await client.room_get_state(room_id)
 
@@ -25,6 +21,7 @@ class MatrixTreeBuilder:
         childs = []
         access = True
         error = None
+        public = False
 
         if isinstance(state_events, RoomGetStateError):
             access = False
@@ -36,13 +33,26 @@ class MatrixTreeBuilder:
                     name = ev.get("content", {}).get("name")
                 elif t == "m.room.canonical_alias":
                     canonical_alias = ev.get("content", {}).get("canonical_alias")
+                elif t == "m.room.create":
+                    if ev.get("content", {}).get("type") == "m.space":
+                        is_space = True
                 elif t == "m.space.child":
-                    is_space = True
                     child_id = ev["state_key"]
                     child_node = await self.fetch_tree(child_id)
                     childs.append(child_node)
-                elif t == "m.space.parent":
-                    is_space = True
+                elif t == "m.room.join_rules":
+                    join_rule = ev.get("content", {}).get("join_rule")
+                    public = join_rule == "public"
 
         type_ = MatrixNodeType.SPACE if is_space else MatrixNodeType.ROOM
-        return MatrixTreeNode(room_id, name, canonical_alias, type_, childs, access, error)
+
+        return MatrixTreeNode(
+            room_id,
+            name,
+            canonical_alias,
+            type_,
+            childs,
+            access,
+            error,
+            public
+        )
