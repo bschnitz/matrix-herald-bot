@@ -1,3 +1,4 @@
+from collections.abc import Awaitable, Callable
 from injector import inject, singleton
 from nio import RoomGetStateError
 from matrix_herald_bot.connection.connection import Connection
@@ -10,8 +11,15 @@ class MatrixTreeBuilder:
     def __init__(self, connection: Connection):
         self.connection = connection
 
-    async def fetch_tree(self, room_id: str) -> MatrixTreeNode:
+    async def fetch_tree(
+        self,
+        room_id: str,
+        preexec: Callable[[str], Awaitable[None]]|None = None
+    ) -> MatrixTreeNode:
         client = self.connection.get_client_or_raise()
+
+        if preexec is not None:
+            await preexec(room_id)
 
         state_events = await client.room_get_state(room_id)
 
@@ -38,7 +46,7 @@ class MatrixTreeBuilder:
                         is_space = True
                 elif t == "m.space.child":
                     child_id = ev["state_key"]
-                    child_node = await self.fetch_tree(child_id)
+                    child_node = await self.fetch_tree(child_id, preexec)
                     childs.append(child_node)
                 elif t == "m.room.join_rules":
                     join_rule = ev.get("content", {}).get("join_rule")

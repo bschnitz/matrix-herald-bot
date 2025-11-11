@@ -1,3 +1,5 @@
+import logging
+from aiohttp import ClientSession
 from injector import inject, singleton
 from nio import RoomGetStateError, RoomPutStateError
 from matrix_herald_bot.config.model import Configuration
@@ -7,6 +9,8 @@ from matrix_herald_bot.services.tree_printer import MatrixTreePrinter
 from matrix_herald_bot.services.admin_service import TuwunelAdminService
 from matrix_herald_bot.services.action_service import MatrixActionService
 from matrix_herald_bot.services.tree_operations import MatrixTreeOperations
+from matrix_herald_bot.services.notification_service import NotificationService
+from matrix_herald_bot.services.listeners import ListenerInterface
 
 @singleton
 class PrintMatrixTreesOfWatchedSpacesCmd:
@@ -102,9 +106,8 @@ class PromoteUsersInAnnouncementRoom:
 
         print(f"Users for promotion: {users}")
         for room in self.config.watched_spaces:
-            root = await self.tree_builder.fetch_tree(room)
-            print(f"Rercursivly promoting users in {root.name}")
-            await self.tree_operations.promote_users_on_all_public_nodes(root, users)
+            print(f"Rercursivly promoting users in {room}")
+            await self.tree_operations.promote_users_on_all_public_nodes(room, users)
 
         await self.connection.close()
 
@@ -141,3 +144,72 @@ class SendTreeToWidget:
             print(f"Tree-Struktur gesendet: {response.event_id}")
 
         await self.connection.close()
+
+@singleton
+class PrintUnreadNotifications:
+    @inject
+    def __init__(
+        self,
+        connection: Connection,
+        notification_service: NotificationService
+    ):
+        self.connection = connection
+        self.notification_service = notification_service
+
+    async def print_all_unread_notifications(self):
+        await self.connection.connect()
+        unread_notifications = await self.notification_service.get_all_unread_notifications()
+        print(unread_notifications)
+        await self.connection.close()
+
+@singleton
+class PrintAllUnreadNotifications:
+    @inject
+    def __init__(
+        self,
+        connection: Connection,
+        config: Configuration
+    ):
+        self.config = config
+        self.connection = connection
+
+    async def print_all_unread_notifications(self):
+        await self.connection.connect()
+        url = f"{self.config.homeserver}/_matrix/client/v3/notifications"
+        headers = {"Authorization": f"Bearer {self.config.server_admin_token}"}
+
+        async with ClientSession() as session:
+            async with session.get(url, headers=headers) as resp:
+                data = await resp.json()
+                notifications = data.get("notifications", [])
+
+                print(f"Found {len(notifications)} notifications\n")
+                for n in notifications:
+                    room = n.get("room_id")
+                    event_id = n.get("event_id")
+                    type_ = n.get("type")
+                    highlight = n.get("highlight")
+                    print(f"Room: {room}, Event: {event_id}, Type: {type_}, Highlight: {highlight}")
+                await self.connection.close()
+
+@singleton
+class HeraldBotEventLoop:
+    @inject
+    def __init__(
+        self,
+        connection: Connection,
+        listeners: list[ListenerInterface]
+    ):
+        self.connection = connection
+        self.listeners = listeners
+        self.logger = logging.getLogger(__name__)
+
+    async def start(self):
+        """Connects to Matrix and runs the bot event loop."""
+        await self.connection.connect()
+
+        async with self.connection as c:
+            client = c.get_client_or_raise()
+            for listener in self.listeners:
+                client.add_event_callback(listener.onEvent, listener.getEventType())
+            await client.sync_forever(timeout=3000, full_state=True)
