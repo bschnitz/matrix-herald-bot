@@ -2,7 +2,7 @@ from injector import inject, singleton
 from nio import JoinError, JoinResponse, RoomGetStateError, RoomPutStateError, RoomPutStateResponse
 from matrix_herald_bot.config.model import Configuration
 from matrix_herald_bot.connection.connection import Connection
-
+from matrix_herald_bot.util.exceptions import NioErrorResponseException
 
 @singleton
 class MatrixActionService:
@@ -33,6 +33,12 @@ class MatrixActionService:
 
     async def get_users_in_announcement_room(self) -> list[str]|RoomGetStateError:
         return await self.get_users_in_room(self.config.announcement_room)
+
+    async def get_users_in_announcement_room_or_raise(self) -> list[str]:
+        resp = await self.get_users_in_room(self.config.announcement_room)
+        if isinstance(resp, RoomGetStateError):
+            raise NioErrorResponseException(resp)
+        return resp
 
     async def room_put_state(
         self,

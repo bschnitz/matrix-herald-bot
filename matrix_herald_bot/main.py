@@ -1,11 +1,12 @@
 import asyncio
 from injector import Injector
+from matrix_herald_bot.core.event.listeners import InternalListenerCollectionModule
 from matrix_herald_bot.di.app_module import AppModule
-from matrix_herald_bot.services.listeners import ListenerCollectionModule
+from matrix_herald_bot.services.listeners import MatrixListenerCollectionModule
 from matrix_herald_bot.services.commands import (
     HeraldBotEventLoop,
     PrintAllUnreadNotifications,
-    PrintMatrixTreesOfWatchedSpacesCmd,
+    PrintMatrixTreesOfWatchedSpaceCmd,
     PrintUnreadNotifications,
     PrintUsersInAnnouncementRoom,
     PromoteToServerAdmin,
@@ -15,10 +16,14 @@ from matrix_herald_bot.services.commands import (
 
 
 async def main():
-    injector = Injector([AppModule, ListenerCollectionModule])
+    injector = Injector([
+        AppModule,
+        MatrixListenerCollectionModule,
+        InternalListenerCollectionModule
+    ])
 
-    #cmd = injector.get(PrintMatrixTreesOfWatchedSpacesCmd)
-    #await cmd.print_trees()
+    cmd = injector.get(PrintMatrixTreesOfWatchedSpaceCmd)
+    await cmd.print_tree()
 
     #cmd = injector.get(PromoteToServerAdmin)
     #resp = await cmd.promote_to_server_admin("@herald:curiosity-summit.org")
@@ -39,8 +44,8 @@ async def main():
     #cmd = injector.get(PrintAllUnreadNotifications)
     #await cmd.print_all_unread_notifications()
 
-    cmd = injector.get(HeraldBotEventLoop)
-    await cmd.start()
+    #cmd = injector.get(HeraldBotEventLoop)
+    #await cmd.start()
 
 if __name__ == "__main__":
     asyncio.run(main())

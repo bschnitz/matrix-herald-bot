@@ -8,12 +8,12 @@ class Configuration:
         server_admin_id: str,
         server_admin_token: str,
         announcement_room: str,
-        watched_spaces: list[str],
+        watched_space: str,
         admin_room_id: str
     ):
         self.homeserver = homeserver
         self.server_admin_id = server_admin_id
         self.server_admin_token = server_admin_token
         self.announcement_room = announcement_room
-        self.watched_spaces = watched_spaces
+        self.watched_space = watched_space
         self.admin_room_id = admin_room_id

@@ -2,7 +2,7 @@ from collections.abc import Awaitable, Callable
 from injector import inject, singleton
 from nio import RoomGetStateError
 from matrix_herald_bot.connection.connection import Connection
-from matrix_herald_bot.model.tree_node import MatrixTreeNode
+from matrix_herald_bot.model.tree import MatrixTree, MatrixTreeNode
 from matrix_herald_bot.model.enums import MatrixNodeType
 
 @singleton
@@ -12,6 +12,13 @@ class MatrixTreeBuilder:
         self.connection = connection
 
     async def fetch_tree(
+        self,
+        room_id: str,
+        preexec: Callable[[str], Awaitable[None]]|None = None
+    ) -> MatrixTree:
+        return MatrixTree(await self.fetch_tree_node(room_id, preexec))
+
+    async def fetch_tree_node(
         self,
         room_id: str,
         preexec: Callable[[str], Awaitable[None]]|None = None
@@ -30,6 +37,7 @@ class MatrixTreeBuilder:
         access = True
         error = None
         public = False
+        herald_widget = None
 
         if isinstance(state_events, RoomGetStateError):
             access = False
@@ -46,11 +54,16 @@ class MatrixTreeBuilder:
                         is_space = True
                 elif t == "m.space.child":
                     child_id = ev["state_key"]
-                    child_node = await self.fetch_tree(child_id, preexec)
+                    child_node = await self.fetch_tree_node(child_id, preexec)
                     childs.append(child_node)
                 elif t == "m.room.join_rules":
                     join_rule = ev.get("content", {}).get("join_rule")
                     public = join_rule == "public"
+                elif (
+                    t == "org.herald.tree_structure_request"
+                    and ev['state_key'] == 'herald_widget'
+                ):
+                    herald_widget = ev['content']['widget_id']
 
         type_ = MatrixNodeType.SPACE if is_space else MatrixNodeType.ROOM
 
@@ -62,5 +75,6 @@ class MatrixTreeBuilder:
             childs,
             access,
             error,
-            public
+            public,
+            herald_widget
         )

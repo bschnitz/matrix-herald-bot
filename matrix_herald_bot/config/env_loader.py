@@ -11,14 +11,12 @@ def getenv_or_raise(varname: str) -> str:
 
 def build_configuration_from_env() -> Configuration:
     load_dotenv()
-    watched_spaces_raw = getenv_or_raise("WATCHED_SPACES")
-    watched_spaces = [item.strip() for item in watched_spaces_raw.split(",") if item.strip()]
     config = Configuration(
         getenv_or_raise("HOMESERVER"),
         getenv_or_raise("SERVER_ADMIN_ID"),
         getenv_or_raise("SERVER_ADMIN_TOKEN"),
         getenv_or_raise("ANNOUNCEMENT_ROOM"),
-        watched_spaces,
+        getenv_or_raise("WATCHED_SPACE"),
         getenv_or_raise("ADMIN_ROOM_ID"),
     )
     return config

@@ -1,5 +1,5 @@
 from injector import singleton, inject
-from matrix_herald_bot.model.tree_node import MatrixTreeNode
+from matrix_herald_bot.model.tree import MatrixTreeNode
 from matrix_herald_bot.model.enums import MatrixNodeType
 
 @singleton
@@ -27,6 +27,8 @@ class MatrixTreePrinter:
             print(f"{prefix}  error: {node.error}")
         print(f"{prefix}  public: {'True' if node.access else 'False'}")
         print(f"{prefix}  access: {'True' if node.public else 'False'}")
+        if node.herald_widget:
+            print(f"{prefix}  herald_widget: {node.herald_widget}")
 
         if node.childs:
             print(f"{prefix}  childs:")

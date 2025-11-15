@@ -4,6 +4,7 @@ from injector import inject, singleton
 from nio import RoomGetStateError, RoomPutStateError
 from matrix_herald_bot.config.model import Configuration
 from matrix_herald_bot.connection.connection import Connection
+from matrix_herald_bot.core.logging.loggers import MatrixLogger
 from matrix_herald_bot.services.tree_builder import MatrixTreeBuilder
 from matrix_herald_bot.services.tree_printer import MatrixTreePrinter
 from matrix_herald_bot.services.admin_service import TuwunelAdminService
@@ -13,26 +14,29 @@ from matrix_herald_bot.services.notification_service import NotificationService
 from matrix_herald_bot.services.listeners import ListenerInterface
 
 @singleton
-class PrintMatrixTreesOfWatchedSpacesCmd:
+class PrintMatrixTreesOfWatchedSpaceCmd:
     @inject
     def __init__(
         self,
         config: Configuration,
         connection: Connection,
         tree_builder: MatrixTreeBuilder,
-        tree_printer: MatrixTreePrinter
+        tree_printer: MatrixTreePrinter,
+        logger: MatrixLogger
     ):
         self.config = config
         self.connection = connection
         self.tree_builder = tree_builder
         self.tree_printer = tree_printer
+        self.logger = logger
 
-    async def print_trees(self):
+    async def print_tree(self):
+        self.logger.debug("debug worlds!")
+        self.logger.info("hello worlds!")
         await self.connection.connect()
-        for space_id in self.config.watched_spaces:
-            root_node = await self.tree_builder.fetch_tree(space_id)
-            self.tree_printer.print_matrix_tree(root_node)
-            print("\n" + "=" * 40 + "\n")
+        tree = await self.tree_builder.fetch_tree(self.config.watched_space)
+        self.tree_printer.print_matrix_tree(tree.root)
+        print("\n" + "=" * 40 + "\n")
         await self.connection.close()
 
 @singleton
@@ -105,9 +109,11 @@ class PromoteUsersInAnnouncementRoom:
             return
 
         print(f"Users for promotion: {users}")
-        for room in self.config.watched_spaces:
-            print(f"Rercursivly promoting users in {room}")
-            await self.tree_operations.promote_users_on_all_public_nodes(room, users)
+        print(f"Rercursivly promoting users in {self.config.watched_space}")
+        await self.tree_operations.join_and_promote_users_on_all_public_nodes(
+            self.config.watched_space,
+            users
+        )
 
         await self.connection.close()
 
@@ -131,10 +137,10 @@ class SendTreeToWidget:
     async def send_tree_to_widget(self, room_id: str):
         await self.connection.connect()
 
-        room = self.config.watched_spaces[0]
-        root = await self.tree_builder.fetch_tree(room)
+        room = self.config.watched_space
+        tree = await self.tree_builder.fetch_tree(room)
         response = await self.tree_operations.send_tree_to_room(
-            root,
+            tree.root,
             room_id,
             "org.herald.tree_structure"
         )

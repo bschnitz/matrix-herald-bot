@@ -1,4 +1,4 @@
-from matrix_herald_bot.model.tree_node import MatrixTreeNode
+from matrix_herald_bot.model.tree import MatrixTreeNode
 
 class MatrixTreeIterator:
     def __init__(self, root: MatrixTreeNode) -> None:

@@ -1,15 +1,14 @@
 {
-    "venvPath": "./",
-    "venv": ".venv",
-    "include": [
-      "matrix_herald_bot",
-    ],
-    "executionEnvironments": [
-        {
-          "root": ".",
-          "extraPaths": ["matrix_herald_bot"]
-        }
-    ],
-    "pythonVersion": "3.13",
-    "reportUnusedExpression": false,
+  "venvPath": "./",
+  "venv": ".venv",
+  "include": ["matrix_herald_bot"],
+  "executionEnvironments": [
+    {
+      "root": ".",
+      "pythonVersion": "3.13",
+      "extraPaths": []
+    }
+  ],
+  "pythonVersion": "3.13",
+  "reportUnusedExpression": false
 }
