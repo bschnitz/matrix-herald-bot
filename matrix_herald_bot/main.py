@@ -22,8 +22,8 @@ async def main():
         InternalListenerCollectionModule
     ])
 
-    cmd = injector.get(PrintMatrixTreesOfWatchedSpaceCmd)
-    await cmd.print_tree()
+    #cmd = injector.get(PrintMatrixTreesOfWatchedSpaceCmd)
+    #await cmd.print_tree()
 
     #cmd = injector.get(PromoteToServerAdmin)
     #resp = await cmd.promote_to_server_admin("@herald:curiosity-summit.org")
@@ -44,8 +44,8 @@ async def main():
     #cmd = injector.get(PrintAllUnreadNotifications)
     #await cmd.print_all_unread_notifications()
 
-    #cmd = injector.get(HeraldBotEventLoop)
-    #await cmd.start()
+    cmd = injector.get(HeraldBotEventLoop)
+    await cmd.start()
 
 if __name__ == "__main__":
     asyncio.run(main())

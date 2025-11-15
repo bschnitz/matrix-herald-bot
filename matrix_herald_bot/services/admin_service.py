@@ -1,4 +1,5 @@
 import asyncio
+from itertools import product
 from injector import inject, singleton
 from nio import RoomSendError, RoomSendResponse
 from matrix_herald_bot.config.model import Configuration
@@ -47,13 +48,18 @@ class TuwunelAdminService:
         self,
         users: list[str],
         rooms: list[str]
-    ) -> list[RoomSendResponse | RoomSendError]:
+    ) -> list[tuple[str, str, RoomSendResponse | RoomSendError]]:
         tasks = [
             self.force_promote(user_id, room_id)
             for room_id in rooms
             for user_id in users
         ]
-        return await asyncio.gather(*tasks)
+        result = await asyncio.gather(*tasks)
+        return [
+            (user_id, room_id, res)
+            for (user_id, room_id), res
+            in zip(product(users, rooms), result)
+        ]
 
     async def force_join_room(
         self,

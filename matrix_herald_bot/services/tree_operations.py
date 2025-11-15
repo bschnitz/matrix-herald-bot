@@ -1,6 +1,6 @@
 from injector import inject, singleton
 from nio import RoomPutStateError, RoomPutStateResponse
-from matrix_herald_bot.model.tree import MatrixTree, MatrixTreeNode
+from matrix_herald_bot.model.tree import MatrixTree
 from matrix_herald_bot.services.admin_service import TuwunelAdminService
 from matrix_herald_bot.util.tree_iterator import MatrixTreeIterator
 from matrix_herald_bot.services.action_service import MatrixActionService
@@ -13,27 +13,21 @@ class MatrixTreeOperations:
         self,
         admin_service: TuwunelAdminService,
         action_service: MatrixActionService,
-        tree_builder: MatrixTreeBuilder
+        tree_builder: MatrixTreeBuilder,
     ):
         self.admin_service = admin_service
         self.action_service = action_service
         self.tree_builder = tree_builder
 
     async def fetch_tree_and_join_on_all_public_nodes(self, room_id: str) -> MatrixTree:
-        async def join_room(room_id: str):
-            await self.action_service.join_room(room_id)
-
-        return await self.tree_builder.fetch_tree(room_id, join_room)
+        return await self.tree_builder.fetch_tree(room_id, self.action_service.join_room)
 
     async def join_and_promote_users_on_all_public_nodes(
         self,
         room_id: str,
         users: list[str]
     ) -> MatrixTree:
-        async def join_room(room_id: str):
-            await self.action_service.join_room(room_id)
-
-        tree = await self.tree_builder.fetch_tree(room_id, join_room)
+        tree = await self.tree_builder.fetch_tree(room_id, self.action_service.join_room)
 
         for node in MatrixTreeIterator(tree.root):
             if node.public:

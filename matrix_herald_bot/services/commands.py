@@ -4,7 +4,9 @@ from injector import inject, singleton
 from nio import RoomGetStateError, RoomPutStateError
 from matrix_herald_bot.config.model import Configuration
 from matrix_herald_bot.connection.connection import Connection
-from matrix_herald_bot.core.logging.loggers import MatrixLogger
+from matrix_herald_bot.core.event.bus import EventBus
+from matrix_herald_bot.core.event.listener_interface import CoreListenerInterface
+from matrix_herald_bot.core.logging.loggers import CoreLogger, MatrixLogger
 from matrix_herald_bot.services.tree_builder import MatrixTreeBuilder
 from matrix_herald_bot.services.tree_printer import MatrixTreePrinter
 from matrix_herald_bot.services.admin_service import TuwunelAdminService
@@ -31,8 +33,6 @@ class PrintMatrixTreesOfWatchedSpaceCmd:
         self.logger = logger
 
     async def print_tree(self):
-        self.logger.debug("debug worlds!")
-        self.logger.info("hello worlds!")
         await self.connection.connect()
         tree = await self.tree_builder.fetch_tree(self.config.watched_space)
         self.tree_printer.print_matrix_tree(tree.root)
@@ -204,18 +204,21 @@ class HeraldBotEventLoop:
     def __init__(
         self,
         connection: Connection,
-        listeners: list[ListenerInterface]
+        listeners: list[ListenerInterface],
+        logger: CoreLogger
     ):
         self.connection = connection
         self.listeners = listeners
-        self.logger = logging.getLogger(__name__)
+        self.logger = logger
 
     async def start(self):
         """Connects to Matrix and runs the bot event loop."""
+        self.logger.info("Starting Herald main event loop.")
         await self.connection.connect()
 
         async with self.connection as c:
             client = c.get_client_or_raise()
             for listener in self.listeners:
                 client.add_event_callback(listener.onEvent, listener.getEventType())
+
             await client.sync_forever(timeout=3000, full_state=True)

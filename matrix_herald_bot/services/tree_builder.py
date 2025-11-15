@@ -1,27 +1,31 @@
 from collections.abc import Awaitable, Callable
+from typing import Any
 from injector import inject, singleton
 from nio import RoomGetStateError
 from matrix_herald_bot.connection.connection import Connection
-from matrix_herald_bot.model.tree import MatrixTree, MatrixTreeNode
+from matrix_herald_bot.core.logging.loggers import MatrixLogger
+from matrix_herald_bot.model.tree import MatrixTree
 from matrix_herald_bot.model.enums import MatrixNodeType
+from matrix_herald_bot.model.tree_node import MatrixTreeNode
 
 @singleton
 class MatrixTreeBuilder:
     @inject
-    def __init__(self, connection: Connection):
+    def __init__(self, connection: Connection, logger: MatrixLogger):
+        self.logger = logger
         self.connection = connection
 
     async def fetch_tree(
         self,
         room_id: str,
-        preexec: Callable[[str], Awaitable[None]]|None = None
+        preexec: Callable[[str], Awaitable[Any]]|None = None
     ) -> MatrixTree:
         return MatrixTree(await self.fetch_tree_node(room_id, preexec))
 
     async def fetch_tree_node(
         self,
         room_id: str,
-        preexec: Callable[[str], Awaitable[None]]|None = None
+        preexec: Callable[[str], Awaitable[Any]]|None = None
     ) -> MatrixTreeNode:
         client = self.connection.get_client_or_raise()
 

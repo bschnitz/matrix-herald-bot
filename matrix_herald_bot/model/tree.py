@@ -1,43 +1,5 @@
-from dataclasses import dataclass, field
-from nio import RoomGetStateError
-from matrix_herald_bot.model.enums import MatrixNodeType
-
-@dataclass
-class MatrixWidget:
-    widget_id: str
-    room_id: str
-
-@dataclass
-class MatrixTreeNode:
-    id: str
-    name: str | None
-    canonical_alias: str | None
-    type_: MatrixNodeType
-    childs: list["MatrixTreeNode"] = field(default_factory=list)
-    access: bool = True
-    error: RoomGetStateError | None = None
-    public: bool = False
-    herald_widget: str | None = None
-
-    def get_childs_sorted_by_type(self) -> list["MatrixTreeNode"]:
-        type_order = {
-            MatrixNodeType.ROOM: 0,
-            MatrixNodeType.SPACE: 1,
-            MatrixNodeType.UNKNOWN: 2
-        }
-        return sorted(self.childs, key=lambda child: type_order.get(child.type_, 99))
-
-    def convert_to_dict(self) -> dict:
-        return {
-            "id": self.id,
-            "name": self.name,
-            "canonical_alias": self.canonical_alias,
-            "type": self.type_.name,
-            "public": self.public,
-            "access": self.access,
-            "error": str(self.error) if self.error else None,
-            "childs": [child.convert_to_dict() for child in self.childs]
-        }
+from matrix_herald_bot.model.tree_node import MatrixTreeNode, MatrixWidget
+from matrix_herald_bot.util.tree_iterator import MatrixTreeIterator
 
 class MatrixTree:
     def __init__(self, root: MatrixTreeNode) -> None:
@@ -45,6 +7,7 @@ class MatrixTree:
         self._cache_build = False
         self._child_id_cache: list[str] = []
         self._herald_widget_cache: list[MatrixWidget] = []
+        self.childs_which_need_user_promotion = []
 
     @property
     def root(self) -> MatrixTreeNode:
@@ -79,14 +42,14 @@ class MatrixTree:
                 self._herald_widget_cache.append(widget)
             stack.extend(node.childs)
 
-    def _collect_child_ids(self) -> list[str]:
-        stack = [self._root]
-        child_ids = []
-        while stack:
-            node = stack.pop()
-            child_ids.append(node.id)
-            stack.extend(node.childs)
-        return child_ids
-
     def convert_to_dict(self):
         return self.root.convert_to_dict()
+
+    def add_node_to_tree(self, parent_room_id: str, node: MatrixTreeNode):
+        for tree_node in MatrixTreeIterator(self._root):
+            if tree_node.id == parent_room_id:
+                tree_node.childs.append(node)
+                self._cache_build = False
+                return
+
+        raise ValueError(f"Parent room '{parent_room_id}' not found in tree.")

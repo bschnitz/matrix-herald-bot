@@ -24,3 +24,6 @@ class MatrixTreeCache:
 
     def __len__(self):
         return len(self.trees)
+
+    def get(self, room_id: str, default=None) -> MatrixTree | None:
+        return self.trees.get(room_id, default)

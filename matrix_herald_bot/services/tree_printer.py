@@ -1,5 +1,5 @@
 from injector import singleton, inject
-from matrix_herald_bot.model.tree import MatrixTreeNode
+from matrix_herald_bot.model.tree_node import MatrixTreeNode
 from matrix_herald_bot.model.enums import MatrixNodeType
 
 @singleton

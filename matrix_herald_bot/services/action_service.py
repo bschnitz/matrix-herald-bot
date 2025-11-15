@@ -2,6 +2,7 @@ from injector import inject, singleton
 from nio import JoinError, JoinResponse, RoomGetStateError, RoomPutStateError, RoomPutStateResponse
 from matrix_herald_bot.config.model import Configuration
 from matrix_herald_bot.connection.connection import Connection
+from matrix_herald_bot.core.logging.loggers import MatrixLogger
 from matrix_herald_bot.util.exceptions import NioErrorResponseException
 
 @singleton
@@ -9,13 +10,23 @@ class MatrixActionService:
     """Provides regular Matrix actions."""
 
     @inject
-    def __init__(self, connection: Connection, config: Configuration):
+    def __init__(
+        self,
+        connection: Connection,
+        config: Configuration,
+        logger: MatrixLogger
+    ):
         self.config = config
         self.connection = connection
+        self.logger = logger
 
     async def join_room(self, room_id: str) -> JoinResponse | JoinError:
         client = self.connection.get_client_or_raise()
         response = await client.join(room_id)
+        if isinstance(response, JoinError):
+            self.logger.error(f"Bot failed to join room {room_id}: {response.message}")
+        else:
+            self.logger.debug(f"Bot successfully joined room {room_id}")
         return response
 
     async def get_users_in_room(self, room_id: str) -> list[str]|RoomGetStateError:
@@ -55,3 +66,17 @@ class MatrixActionService:
             content,
             state_key
         )
+
+    async def print_room_info(self, room_id: str):
+        client = self.connection.get_client_or_raise()
+        state_events = await client.room_get_state(room_id)
+
+        if isinstance(state_events, RoomGetStateError):
+            print(f"Fehler beim Abrufen der Rauminformationen: {state_events}")
+            return
+
+        for event in state_events.events:
+            print(f"Event-Typ: {event['type']}")
+            print(f"State Key: {event.get('state_key', 'N/A')}")
+            print(f"Content: {event.get('content', {})}")
+            print("---")
