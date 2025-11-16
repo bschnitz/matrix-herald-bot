@@ -17,17 +17,17 @@ handlers:
   matrix_log_file:
     class: logging.FileHandler
     formatter: json
-    filename: logs/matrix.log.json
+    filename: matrix.log.json
     level: DEBUG
   core_log_file:
     class: logging.FileHandler
     formatter: json
-    filename: logs/core.log.json
+    filename: core.log.json
     level: DEBUG
   tree_logger:
     class: logging.FileHandler
     formatter: json
-    filename: logs/tree.log.json
+    filename: tree.log.json
     level: DEBUG
 
 root:

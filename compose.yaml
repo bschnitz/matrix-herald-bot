@@ -1,0 +1,18 @@
+services:
+  matrix-herald-bot:
+    build:
+      dockerfile: docker/Dockerfile
+    volumes:
+      - ./:/app
+      - ./docker/entrypoint.sh:/entrypoint.sh
+    entrypoint: ["/entrypoint.sh"]
+    restart: unless-stopped
+    environment:
+      HOMESERVER: $HOMESERVER
+      SERVER_ADMIN_ID: $SERVER_ADMIN_ID
+      SERVER_ADMIN_TOKEN: $SERVER_ADMIN_TOKEN
+      ANNOUNCEMENT_ROOM: $ANNOUNCEMENT_ROOM
+      WATCHED_SPACE: $WATCHED_SPACE
+      ADMIN_ROOM_ID: $ADMIN_ROOM_ID
+      ENVIRONMENT: $ENVIRONMENT
+      LOGS_DIR: /app/logs

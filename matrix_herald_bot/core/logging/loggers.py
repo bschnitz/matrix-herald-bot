@@ -1,6 +1,8 @@
+import os
 import sys
 import inspect
 import logging.config
+from dotenv import load_dotenv
 import yaml
 from injector import Module, Binder, singleton
 from matrix_herald_bot.root import config_dir
@@ -47,6 +49,15 @@ def get_logging_config():
                 raise ValueError(f"Logger {cls.lname} already defined in LOGGING")
 
             config["loggers"][cls.lname] = cls.config
+
+    load_dotenv()
+    logs_dir = os.getenv('LOGS_DIR') or './logs'
+    logs_dir = os.path.abspath(os.path.expanduser(logs_dir))
+    os.makedirs(logs_dir, exist_ok=True)
+
+    for _, handler in config.get("handlers", {}).items():
+        if "filename" in handler:
+            handler["filename"] = os.path.join(logs_dir, os.path.basename(handler["filename"]))
 
     return config
 

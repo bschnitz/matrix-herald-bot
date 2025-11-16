@@ -1,5 +1,6 @@
 from injector import inject, singleton
 from nio import RoomPutStateError, RoomPutStateResponse
+from matrix_herald_bot.core.logging.loggers import MatrixLogger
 from matrix_herald_bot.model.tree import MatrixTree
 from matrix_herald_bot.services.admin_service import TuwunelAdminService
 from matrix_herald_bot.util.tree_iterator import MatrixTreeIterator
@@ -14,10 +15,12 @@ class MatrixTreeOperations:
         admin_service: TuwunelAdminService,
         action_service: MatrixActionService,
         tree_builder: MatrixTreeBuilder,
+        logger: MatrixLogger
     ):
         self.admin_service = admin_service
         self.action_service = action_service
         self.tree_builder = tree_builder
+        self.logger = logger
 
     async def fetch_tree_and_join_on_all_public_nodes(self, room_id: str) -> MatrixTree:
         return await self.tree_builder.fetch_tree(room_id, self.action_service.join_room)
@@ -41,9 +44,15 @@ class MatrixTreeOperations:
         tree: MatrixTree,
         room_id: str,
     ) -> RoomPutStateResponse|RoomPutStateError:
-        return await self.action_service.room_put_state(
+        resp = await self.action_service.room_put_state(
             room_id,
             'org.herald.tree_structure',
-            tree.convert_to_dict(),
+            tree.convert_to_dict() or {},
             'herald_widget'
         )
+        if isinstance(resp, RoomPutStateError):
+            self.logger.error(
+                f"Error sending tree structure to room {room_id}: {resp.message}"
+            )
+        return resp
+
