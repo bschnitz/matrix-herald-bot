@@ -42,27 +42,61 @@ class UpdateWatchedTreeOnSpaceChildAdded(ListenerInterface[RoomSpaceChildEvent])
 
     async def onEvent(self, room: MatrixRoom, event: RoomSpaceChildEvent):
         parent_id = room.room_id
-        new_room_id = event.state_key
-        self.logger.debug("New RoomSpaceChildEvent.")
+        # The via-fiel in content idicates if the room was added or removed from
+        # its parent
+        room_is_added = 'via' in event.source['content']
+        space_child = event.state_key
+        self.logger.debug("New RoomSpaceChildEvent.", extra={'event': event.source})
         if (watched_space := self.config.watched_space) not in self.tree_cache:
-            self.logger.info("Updating room tree.")
-            tree = (await self.tree_operations
-                              .fetch_tree_and_join_on_all_public_nodes(watched_space))
-            tree.childs_which_need_user_promotion.append(new_room_id)
-            self.tree_cache[watched_space] = tree
-            await self.event_bus.publish(TreeStructureUpdated(tree))
+            await self._initializeRoomTree(watched_space)
+        elif room_is_added:
+            await self._onRoomAdded(watched_space, space_child, parent_id)
         else:
-            tree = self.tree_cache[watched_space]
-            known_rooms = tree.child_ids
-            if new_room_id not in known_rooms and parent_id in known_rooms:
-                self.logger.info("Updating room tree.")
-                self.logger.info(f"New room {new_room_id} in watched space.")
-                self.logger.debug("Known rooms in cache.", extra={'childs':known_rooms})
-                subtree = (await self.tree_operations
-                              .fetch_tree_and_join_on_all_public_nodes(new_room_id))
-                tree.add_node_to_tree(parent_id, subtree.root)
+            await self._onRoomRemoved(watched_space, space_child, parent_id)
+
+    async def _initializeRoomTree(self, watched_space: str):
+        self.logger.info("Initializing room tree.")
+        tree = (await self.tree_operations
+                          .fetch_tree_and_join_on_all_public_nodes(watched_space))
+        self.tree_cache[watched_space] = tree
+        await self.event_bus.publish(TreeStructureUpdated(tree))
+
+    async def _onRoomAdded(
+        self,
+        watched_space: str,
+        new_room_id: str,
+        parent_id: str
+    ):
+        tree = self.tree_cache[watched_space]
+        known_rooms = tree.child_ids
+        if parent_id in known_rooms:
+            self.logger.info(
+                f"Updating room tree: New room {new_room_id} in watched space."
+            )
+            self.logger.debug("Known rooms in cache.", extra={'childs':known_rooms})
+            subtree = (await self.tree_operations
+                          .fetch_tree_and_join_on_all_public_nodes(new_room_id))
+            tree.add_node(parent_id, subtree.root)
+            # if child exists already in another part of the tree, there is no
+            # need to promote the users in it again
+            if new_room_id not in known_rooms:
                 tree.childs_which_need_user_promotion.extend(subtree.child_ids)
-                await self.event_bus.publish(TreeStructureUpdated(tree))
+            await self.event_bus.publish(TreeStructureUpdated(tree))
+
+    async def _onRoomRemoved(
+        self,
+        watched_space: str,
+        removed_room_id: str,
+        parent_id: str
+    ):
+        tree = self.tree_cache[watched_space]
+        known_rooms = tree.child_ids
+        if parent_id in known_rooms:
+            self.logger.info(
+                "Updating room tree."
+                f"Room {removed_room_id} was removed from its parent {parent_id}."
+            )
+            tree.remove_node(parent_id, removed_room_id)
 
 @singleton
 class RespondOnTreeRequest(ListenerInterface[UnknownEvent]):

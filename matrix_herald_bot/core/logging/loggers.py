@@ -23,6 +23,14 @@ class CoreLogger(BaseLogger):
         "propagate": False
     }
 
+class MatrixTreeLogger(BaseLogger):
+    lname = "herald.tree"
+    config = {
+        "handlers": ["tree_logger"],
+        "level": "DEBUG",
+        "propagate": False
+    }
+
 
 def get_logging_config():
     current_module = sys.modules[__name__]

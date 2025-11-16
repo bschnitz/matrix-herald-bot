@@ -42,13 +42,29 @@ class MatrixTree:
                 self._herald_widget_cache.append(widget)
             stack.extend(node.childs)
 
-    def convert_to_dict(self):
-        return self.root.convert_to_dict()
+    def convert_to_dict(self, exclude_defective=True) -> dict|None:
+        return self.root.convert_to_dict(exclude_defective)
 
-    def add_node_to_tree(self, parent_room_id: str, node: MatrixTreeNode):
+    def add_node(self, parent_room_id: str, node: MatrixTreeNode):
         for tree_node in MatrixTreeIterator(self._root):
             if tree_node.id == parent_room_id:
                 tree_node.childs.append(node)
+                self._cache_build = False
+                return
+
+        raise ValueError(f"Parent room '{parent_room_id}' not found in tree.")
+
+    def remove_node(self, parent_room_id: str, removed_node_id: str):
+        for tree_node in MatrixTreeIterator(self._root):
+            if tree_node.id == parent_room_id:
+                tree_node.childs = [
+                    child for child in tree_node.childs
+                    if child.id != removed_node_id
+                ]
+                self.childs_which_need_user_promotion = [
+                    child for child in self.childs_which_need_user_promotion
+                    if child != removed_node_id
+                ]
                 self._cache_build = False
                 return
 

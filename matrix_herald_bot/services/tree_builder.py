@@ -2,8 +2,9 @@ from collections.abc import Awaitable, Callable
 from typing import Any
 from injector import inject, singleton
 from nio import RoomGetStateError
+from matrix_herald_bot.config.model import Configuration
 from matrix_herald_bot.connection.connection import Connection
-from matrix_herald_bot.core.logging.loggers import MatrixLogger
+from matrix_herald_bot.core.logging.loggers import MatrixLogger, MatrixTreeLogger
 from matrix_herald_bot.model.tree import MatrixTree
 from matrix_herald_bot.model.enums import MatrixNodeType
 from matrix_herald_bot.model.tree_node import MatrixTreeNode
@@ -11,18 +12,32 @@ from matrix_herald_bot.model.tree_node import MatrixTreeNode
 @singleton
 class MatrixTreeBuilder:
     @inject
-    def __init__(self, connection: Connection, logger: MatrixLogger):
+    def __init__(
+        self,
+        connection: Connection,
+        logger: MatrixLogger,
+        tree_logger: MatrixTreeLogger,
+        config: Configuration
+    ):
+        self.config = config
         self.logger = logger
         self.connection = connection
+        self.tree_logger = tree_logger
 
     async def fetch_tree(
         self,
         room_id: str,
         preexec: Callable[[str], Awaitable[Any]]|None = None
     ) -> MatrixTree:
-        return MatrixTree(await self.fetch_tree_node(room_id, preexec))
+        tree = MatrixTree(await self._fetch_tree_node(room_id, preexec))
+        if self.config.env == 'dev':
+            self.tree_logger.debug(
+                "Matrix Tree.",
+                extra={'tree': tree.root.convert_to_event_dict()}
+            )
+        return tree
 
-    async def fetch_tree_node(
+    async def _fetch_tree_node(
         self,
         room_id: str,
         preexec: Callable[[str], Awaitable[Any]]|None = None
@@ -42,12 +57,14 @@ class MatrixTreeBuilder:
         error = None
         public = False
         herald_widget = None
+        events = None
 
         if isinstance(state_events, RoomGetStateError):
             access = False
             error = state_events
         else:
-            for ev in state_events.events:
+            events = state_events.events
+            for ev in events:
                 t = ev["type"]
                 if t == "m.room.name":
                     name = ev.get("content", {}).get("name")
@@ -57,8 +74,10 @@ class MatrixTreeBuilder:
                     if ev.get("content", {}).get("type") == "m.space":
                         is_space = True
                 elif t == "m.space.child":
+                    if not 'via' in ev['content']:
+                        continue # room was removed
                     child_id = ev["state_key"]
-                    child_node = await self.fetch_tree_node(child_id, preexec)
+                    child_node = await self._fetch_tree_node(child_id, preexec)
                     childs.append(child_node)
                 elif t == "m.room.join_rules":
                     join_rule = ev.get("content", {}).get("join_rule")
@@ -80,5 +99,6 @@ class MatrixTreeBuilder:
             access,
             error,
             public,
-            herald_widget
+            herald_widget,
+            events
         )

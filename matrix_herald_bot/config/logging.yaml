@@ -24,6 +24,11 @@ handlers:
     formatter: json
     filename: logs/core.log.json
     level: DEBUG
+  tree_logger:
+    class: logging.FileHandler
+    formatter: json
+    filename: logs/tree.log.json
+    level: DEBUG
 
 root:
   handlers: ["console"]

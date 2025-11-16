@@ -9,7 +9,8 @@ class Configuration:
         server_admin_token: str,
         announcement_room: str,
         watched_space: str,
-        admin_room_id: str
+        admin_room_id: str,
+        env: str
     ):
         self.homeserver = homeserver
         self.server_admin_id = server_admin_id
@@ -17,3 +18,4 @@ class Configuration:
         self.announcement_room = announcement_room
         self.watched_space = watched_space
         self.admin_room_id = admin_room_id
+        self.env = env

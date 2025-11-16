@@ -18,5 +18,6 @@ def build_configuration_from_env() -> Configuration:
         getenv_or_raise("ANNOUNCEMENT_ROOM"),
         getenv_or_raise("WATCHED_SPACE"),
         getenv_or_raise("ADMIN_ROOM_ID"),
+        getenv_or_raise("ENVIRONMENT"),
     )
     return config

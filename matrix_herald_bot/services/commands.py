@@ -1,11 +1,8 @@
-import logging
 from aiohttp import ClientSession
 from injector import inject, singleton
-from nio import RoomGetStateError, RoomPutStateError
+from nio import RoomGetStateError, RoomPutStateError, UploadFilterError
 from matrix_herald_bot.config.model import Configuration
 from matrix_herald_bot.connection.connection import Connection
-from matrix_herald_bot.core.event.bus import EventBus
-from matrix_herald_bot.core.event.listener_interface import CoreListenerInterface
 from matrix_herald_bot.core.logging.loggers import CoreLogger, MatrixLogger
 from matrix_herald_bot.services.tree_builder import MatrixTreeBuilder
 from matrix_herald_bot.services.tree_printer import MatrixTreePrinter
@@ -221,4 +218,18 @@ class HeraldBotEventLoop:
             for listener in self.listeners:
                 client.add_event_callback(listener.onEvent, listener.getEventType())
 
-            await client.sync_forever(timeout=3000, full_state=True)
+            filter_response = await client.upload_filter(
+                room={"timeline": { "limit": 0},}
+            )
+
+            if isinstance(filter_response, UploadFilterError):
+                self.logger.error(
+                    f"Error connecting to matrix server: {filter_response.message}"
+                )
+                return
+
+            await client.sync_forever(
+                timeout=3000,
+                full_state=False,
+                first_sync_filter=filter_response.filter_id
+            )

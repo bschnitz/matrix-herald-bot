@@ -18,6 +18,7 @@ class MatrixTreeNode:
     error: RoomGetStateError | None = None
     public: bool = False
     herald_widget: str | None = None
+    events: list|None = None
 
     def get_childs_sorted_by_type(self) -> list["MatrixTreeNode"]:
         type_order = {
@@ -27,7 +28,10 @@ class MatrixTreeNode:
         }
         return sorted(self.childs, key=lambda child: type_order.get(child.type_, 99))
 
-    def convert_to_dict(self) -> dict:
+    def convert_to_dict(self, exclude_defective=True) -> dict|None:
+        if exclude_defective and self.error:
+            return None
+
         return {
             "id": self.id,
             "name": self.name,
@@ -36,5 +40,22 @@ class MatrixTreeNode:
             "public": self.public,
             "access": self.access,
             "error": str(self.error) if self.error else None,
-            "childs": [child.convert_to_dict() for child in self.childs]
+            "childs": [
+                child_dict
+                for child in self.childs
+                if (child_dict := child.convert_to_dict(exclude_defective)) is not None
+            ]
+        }
+
+    def convert_to_event_dict(self) -> dict:
+        if isinstance(self.error, RoomGetStateError):
+            return {
+                "id": self.id,
+                "error": self.error.message
+            }
+
+        return {
+            "id": self.id,
+            "events": self.events,
+            "childs": [child.convert_to_event_dict() for child in self.childs]
         }
