@@ -5,4 +5,8 @@ ENV POETRY_VERSION=2.2.0 \
 
 RUN pip install --no-cache-dir "poetry==${POETRY_VERSION}"
 
-WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    supervisor \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf

@@ -1,3 +1,4 @@
+import json
 from aiohttp import ClientSession
 from injector import inject, singleton
 from nio import RoomGetStateError, RoomPutStateError, UploadFilterError
@@ -194,6 +195,56 @@ class PrintAllUnreadNotifications:
                     highlight = n.get("highlight")
                     print(f"Room: {room}, Event: {event_id}, Type: {type_}, Highlight: {highlight}")
                 await self.connection.close()
+
+@singleton
+class PrintAllRoomMessages:
+    @inject
+    def __init__(self, connection: "Connection", config: "Configuration"):
+        self.config = config
+        self.connection = connection
+
+    async def print_all_messages(self, room_id: str):
+        await self.connection.connect()
+        headers = {"Authorization": f"Bearer {self.config.server_admin_token}"}
+        url_template = f"{self.config.homeserver}/_matrix/client/v3/rooms/{room_id}/messages"
+
+        token = None  # Startpunkt (None für aktuelles Ende)
+        total_messages = 0
+
+        async with ClientSession() as session:
+            while True:
+                params = {"limit": "50", "dir": "b"}  # zurück in der Zeit
+                if token:
+                    params["from"] = token
+
+                async with session.get(url_template, headers=headers, params=params) as resp:
+                    data = await resp.json()
+                    chunk = data.get("chunk", [])
+                    end_token = data.get("end")
+
+                    if not chunk:
+                        break
+
+                    for event in chunk:
+                        # Wir filtern nur normale Messages
+                        if event.get("type") == "m.room.message":
+                            pretty = json.dumps(event, indent=4, ensure_ascii=False)
+                            print(pretty)
+                            #sender = event.get("sender")
+                            #content = event.get("content", {})
+                            #body = content.get("body", "")
+                            #msgtype = content.get("msgtype", "")
+                            #print(f"[{sender}] ({msgtype}): {body}")
+                            total_messages += 1
+
+                    if not end_token:
+                        break
+
+                    token = end_token  # für die nächste Paginierung
+
+        print(f"\nTotal messages fetched: {total_messages}")
+        await self.connection.close()
+
 
 @singleton
 class HeraldBotEventLoop:
